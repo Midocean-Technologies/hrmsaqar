@@ -38,7 +38,8 @@ class ValueMultiplierError(frappe.ValidationError):
 class LeaveAllocation(Document):
 	def validate(self):
 		self.validate_period()
-		self.validate_allocation_overlap()
+		if self.new_leaves_allocated > 0:
+			self.validate_allocation_overlap() # customized for making negative allocation
 		self.validate_lwp()
 		set_employee_name(self)
 		self.set_total_leaves_allocated()
