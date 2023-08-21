@@ -74,6 +74,20 @@ class SalaryStructureAssignment(Document):
 						self.from_date, relieving_date
 					)
 				)
+		
+		# customization for updating the empployee rec on submit of salary structure assigment.
+		# custom code block start
+		if self.docstatus == 1:
+			emp_rec = frappe.get_doc("Employee",self.employee)
+			monthly_hours = 0
+			if emp_rec.monthly_hours:
+				monthly_hours = emp_rec.monthly_hours
+			hourly_rate = flt(self.monthly_pay_for_overtime/monthly_hours) if monthly_hours != 0 else 0
+			emp_rec.hourly_rate = hourly_rate
+			emp_rec.holiday_overtime_rate = emp_rec.hourly_rate * emp_rec.holiday_overtime_multiplier
+			emp_rec.non_holiday_overtime_rate = emp_rec.hourly_rate * emp_rec.non_holiday_overtime_multiplier
+			emp_rec.save(ignore_permissions=True)
+		# custom code block end
 
 	def validate_income_tax_slab(self):
 		if not self.income_tax_slab:
