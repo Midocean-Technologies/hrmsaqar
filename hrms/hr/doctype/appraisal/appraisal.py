@@ -109,6 +109,10 @@ class Appraisal(Document):
 				{
 					"kra": entry.key_result_area,
 					"per_weightage": entry.per_weightage,
+					"custom_percentage": entry.custom_percentage, # customized: added
+					"custom_frequency":entry.custom_frequency, # customized: added
+					"custom_kpi":entry.custom_kpi, # customized: added
+					"custom_kra_document":entry.custom_kra_documents # customized: added
 				},
 			)
 
