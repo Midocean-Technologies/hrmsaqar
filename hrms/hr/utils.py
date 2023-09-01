@@ -489,6 +489,7 @@ def get_earned_leaves():
 def create_additional_leave_ledger_entry(allocation, leaves, date):
 	# customize - Creates -ve leave allocation for the given employee in the provided leave period
 	date_of_joining = frappe.db.get_value("Employee", allocation.employee, "date_of_joining")
+	effective_from = frappe.db.get_value("Leave Policy Assignment", allocation.leave_policy_assignment, 'effective_from')
 	leave_alloc = None
 	adjust_value = 0
 	is_applicable = False
@@ -498,7 +499,7 @@ def create_additional_leave_ledger_entry(allocation, leaves, date):
 		leave_details = frappe.get_doc('Leave Type', allocation.leave_type) 
 		applicable_till = leave_details.applicable_till
 		leaves_rounding = leave_details.leave_rounding
-		number_of_days_of_joining = date_diff(getdate(), date_of_joining)
+		number_of_days_of_joining = date_diff(getdate(), effective_from)
 		if applicable_till >= number_of_days_of_joining:
 			is_applicable = True
 			leave_ = leaves - leaves_rounding
