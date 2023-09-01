@@ -263,7 +263,7 @@ class LeavePolicyAssignment(Document):
 				leaves_rounding = leave_details.leave_rounding
 				print('leaves rounding', leave_details.leave_rounding)
 				if months_passed > 0:
-					number_of_days_of_joining = date_diff(getdate(), date_of_joining)
+					number_of_days_of_joining = date_diff(getdate(), self.effective_from)
 					print('number of days', number_of_days_of_joining)
 					if applicable_till >= number_of_days_of_joining:
 						leave_ = leaves_rounding * months_passed
