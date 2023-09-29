@@ -136,6 +136,9 @@ class PayrollEntry(Document):
 		filters["branch"] = self.branch
 		filters["department"] = self.department
 		filters["designation"] = self.designation
+		filters["visa_company"] = self.visa_company # custom code 29-09-2023
+		filters["payroll_cost_center"] = self.payroll_cost_center # custom code 29-09-2023
+		filters["working_status"] = self.working_status # custom code 29-09-2023
 
 		return filters
 
@@ -161,6 +164,16 @@ class PayrollEntry(Document):
 				error_msg += "<br>" + _("Start date: {0}").format(frappe.bold(self.start_date))
 			if self.end_date:
 				error_msg += "<br>" + _("End date: {0}").format(frappe.bold(self.end_date))
+
+			# custom code block start
+			if self.visa_company:
+				error_msg += "<br>" + _("Visa Company: {0}").format(frappe.bold(self.visa_company))
+			if self.payroll_cost_center:
+				error_msg += "<br>" + _("Payroll Cost Center: {0}").format(frappe.bold(self.payroll_cost_center))
+			if self.working_status:
+				error_msg += "<br>" + _("Working Status: {0}").format(frappe.bold(self.working_status))
+			# custom code block end 
+
 			frappe.throw(error_msg, title=_("No employees found"))
 
 		for d in employees:
@@ -906,7 +919,7 @@ def get_sal_struct(
 
 def get_filter_condition(filters):
 	cond = ""
-	for f in ["company", "branch", "department", "designation"]:
+	for f in ["company", "branch", "department", "designation", "visa_company", "payroll_cost_center", "working_status"]:
 		if filters.get(f):
 			cond += " and t1." + f + " = " + frappe.db.escape(filters.get(f))
 
@@ -935,6 +948,7 @@ def get_emp_list(sal_struct, cond, end_date, payroll_payable_account):
 				t1.name = t2.employee
 				and t2.docstatus = 1
 				and t1.status != 'Inactive'
+				and t1.working_status != 'Inactive' 
 		%s order by t2.from_date desc
 		"""
 		% cond,
