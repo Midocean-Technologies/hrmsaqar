@@ -65,7 +65,8 @@ class EmployeeCheckin(Document):
 def add_log_based_on_employee_field(
 	employee_field_value,
 	timestamp,
-	device_id=None,
+	device_serial_number,
+	device_id,
 	log_type=None,
 	skip_auto_attendance=0,
 	employee_fieldname="attendance_device_id",
@@ -102,6 +103,7 @@ def add_log_based_on_employee_field(
 	doc.employee = employee.name
 	doc.employee_name = employee.employee_name
 	doc.time = timestamp
+	doc.device_serial_number = device_serial_number
 	doc.device_id = device_id
 	doc.log_type = log_type
 	if cint(skip_auto_attendance) == 1:

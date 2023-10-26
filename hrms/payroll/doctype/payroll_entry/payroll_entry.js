@@ -58,6 +58,9 @@ frappe.ui.form.on('Payroll Entry', {
 			if (frm.doc.docstatus == 0) {
 				frm.page.clear_primary_action();
 				frm.page.set_primary_action(__("Create Salary Slips"), () => {
+					if(frm.doc.lwp_updated == 0) {
+						frappe.throw("LWP need to be automarked before creating salary slips")
+					}
 					frm.save("Submit").then(() => {
 						frm.page.clear_primary_action();
 						frm.refresh();

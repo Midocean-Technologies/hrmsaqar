@@ -8,6 +8,7 @@ from frappe.utils import (
 	add_days,
 	cstr,
 	flt,
+	date_diff,
 	format_datetime,
 	formatdate,
 	get_datetime,
@@ -334,13 +335,15 @@ def generate_leave_encashment():
 
 
 def allocate_earned_leaves():
+	print('in method')
 	"""Allocate earned leaves to Employees"""
 	e_leave_types = get_earned_leaves()
+	print(e_leave_types)
 	today = frappe.flags.current_date or getdate()
 
 	for e_leave_type in e_leave_types:
 		leave_allocations = get_leave_allocations(today, e_leave_type.name)
-
+		print(leave_allocations)
 		for allocation in leave_allocations:
 			if not allocation.leave_policy_assignment and not allocation.leave_policy:
 				continue
@@ -365,13 +368,15 @@ def allocate_earned_leaves():
 			if e_leave_type.allocate_on_day == "Date of Joining":
 				from_date = date_of_joining
 
-			if check_effective_date(
-				from_date, today, e_leave_type.earned_leave_frequency, e_leave_type.allocate_on_day
-			):
-				update_previous_leave_allocation(allocation, annual_allocation, e_leave_type, date_of_joining)
+			# if check_effective_date(
+			# 	from_date, today, e_leave_type.earned_leave_frequency, e_leave_type.allocate_on_day
+			# ):
+			print('========')
+			update_previous_leave_allocation(allocation, annual_allocation, e_leave_type, date_of_joining)
 
 
 def update_previous_leave_allocation(allocation, annual_allocation, e_leave_type, date_of_joining):
+	print('update previous')
 	allocation = frappe.get_doc("Leave Allocation", allocation.name)
 	annual_allocation = flt(annual_allocation, allocation.precision("total_leaves_allocated"))
 
@@ -399,6 +404,8 @@ def update_previous_leave_allocation(allocation, annual_allocation, e_leave_type
 		today_date = frappe.flags.current_date or getdate()
 
 		allocation.db_set("total_leaves_allocated", new_allocation, update_modified=False)
+		print('===========')
+		print('earned_-------------', earned_leaves)
 		create_additional_leave_ledger_entry(allocation, earned_leaves, today_date)
 
 		if e_leave_type.allocate_on_day:
@@ -409,7 +416,6 @@ def update_previous_leave_allocation(allocation, annual_allocation, e_leave_type
 			)
 
 		allocation.add_comment(comment_type="Info", text=text)
-
 
 def get_monthly_earned_leave(
 	date_of_joining,
@@ -436,7 +442,7 @@ def get_monthly_earned_leave(
 			)
 
 		earned_leaves = round_earned_leaves(earned_leaves, rounding)
-
+		print(earned_leaves, 'earned leaves')
 	return earned_leaves
 
 
@@ -481,12 +487,62 @@ def get_earned_leaves():
 
 
 def create_additional_leave_ledger_entry(allocation, leaves, date):
-	"""Create leave ledger entry for leave types"""
-	allocation.new_leaves_allocated = leaves
-	allocation.from_date = date
-	allocation.unused_leaves = 0
-	allocation.create_leave_ledger_entry()
+	# customize - Creates -ve leave allocation for the given employee in the provided leave period
+	date_of_joining = frappe.db.get_value("Employee", allocation.employee, "date_of_joining")
+	effective_from = frappe.db.get_value("Leave Policy Assignment", allocation.leave_policy_assignment, 'effective_from')
+	leave_alloc = None
+	adjust_value = 0
+	is_applicable = False
+	if allocation.is_leave_adjust == 1:
+		leave_alloc = allocation.name
+		adjust_value = allocation.leaves_adjust
+		leave_details = frappe.get_doc('Leave Type', allocation.leave_type) 
+		applicable_till = leave_details.applicable_till
+		leaves_rounding = leave_details.leave_rounding
+		number_of_days_of_joining = date_diff(getdate(), effective_from)
+		if applicable_till >= number_of_days_of_joining:
+			is_applicable = True
+			leave_ = leaves - leaves_rounding
+			"""Create leave ledger entry for leave types"""
+			allocation.new_leaves_allocated = leaves
+			adjust_value = allocation.leaves_adjust + flt(leave_)
+			frappe.db.set_value(allocation.doctype, allocation.name, 'leaves_adjust', allocation.leaves_adjust + flt(leave_))
+			allocation.from_date = date
+			allocation.unused_leaves = 0
+			allocation.create_leave_ledger_entry()
 
+			args = dict(
+				leaves=flt(leave_) * -1,
+				transaction_name=allocation.name,
+				transaction_type="Leave Allocation",
+				from_date=allocation.from_date,
+				to_date=allocation.to_date,
+			)
+
+			ledger = frappe._dict(
+				doctype="Leave Ledger Entry",
+				employee=allocation.employee,
+				employee_name=allocation.employee_name,
+				leave_type=allocation.leave_type,
+				transaction_type=allocation.doctype,
+				transaction_name=allocation.name,
+				is_carry_forward=0,
+				is_expired=0,
+				is_lwp=0,
+			)
+			ledger.update(args)
+
+			doc = frappe.get_doc(ledger)
+			doc.flags.ignore_permissions = 1
+			doc.submit()
+
+		else:
+			if adjust_value > 0:
+				allocation.new_leaves_allocated = leaves + adjust_value
+				allocation.from_date = date
+				allocation.unused_leaves = 0
+				allocation.create_leave_ledger_entry()
+				adjust_value = 0
 
 def check_effective_date(from_date, today, frequency, allocate_on_day):
 	from dateutil import relativedelta
